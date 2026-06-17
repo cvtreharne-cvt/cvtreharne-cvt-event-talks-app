@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const elements = {
         themeToggle: document.getElementById('theme-toggle'),
+        exportCsvBtn: document.getElementById('export-csv-btn'),
         refreshBtn: document.getElementById('refresh-btn'),
         retryBtn: document.getElementById('retry-btn'),
         resetFiltersBtn: document.getElementById('reset-filters-btn'),
@@ -48,7 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
         general: `<svg xmlns="http://www.w3.org/2005/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>`,
         copy: `<svg xmlns="http://www.w3.org/2005/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
         success: `<svg xmlns="http://www.w3.org/2005/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-        link: `<svg xmlns="http://www.w3.org/2005/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`
+        link: `<svg xmlns="http://www.w3.org/2005/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
+        linkCopy: `<svg xmlns="http://www.w3.org/2005/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`
     };
 
     /* ==========================================================================
@@ -328,13 +330,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const actions = document.createElement('div');
         actions.className = 'card-actions';
 
-        // Copy button
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'card-action-btn tooltip';
-        copyBtn.setAttribute('data-tooltip', 'Copy Direct Link');
-        copyBtn.innerHTML = icons.copy;
-        copyBtn.addEventListener('click', () => {
-            copyToClipboard(entry.link, copyBtn);
+        // Copy Link button (chain link icon)
+        const copyLinkBtn = document.createElement('button');
+        copyLinkBtn.className = 'card-action-btn tooltip';
+        copyLinkBtn.setAttribute('data-tooltip', 'Copy Direct Link');
+        copyLinkBtn.innerHTML = icons.linkCopy;
+        copyLinkBtn.addEventListener('click', () => {
+            copyToClipboard(entry.link, copyLinkBtn, 'link');
+        });
+
+        // Copy Content button (clipboard/document copy icon)
+        const copyContentBtn = document.createElement('button');
+        copyContentBtn.className = 'card-action-btn tooltip';
+        copyContentBtn.setAttribute('data-tooltip', 'Copy Release Text');
+        copyContentBtn.innerHTML = icons.copy;
+        copyContentBtn.addEventListener('click', () => {
+            const textToCopy = getCardTextContent(entry);
+            copyToClipboard(textToCopy, copyContentBtn, 'content');
         });
 
         // Open original link
@@ -346,7 +358,8 @@ document.addEventListener('DOMContentLoaded', () => {
         linkBtn.setAttribute('rel', 'noopener noreferrer');
         linkBtn.innerHTML = icons.link;
 
-        actions.appendChild(copyBtn);
+        actions.appendChild(copyLinkBtn);
+        actions.appendChild(copyContentBtn);
         actions.appendChild(linkBtn);
         
         header.appendChild(dateContainer);
@@ -391,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    async function copyToClipboard(text, buttonElement) {
+    async function copyToClipboard(text, buttonElement, type) {
         try {
             await navigator.clipboard.writeText(text);
             buttonElement.innerHTML = icons.success;
@@ -399,12 +412,17 @@ document.addEventListener('DOMContentLoaded', () => {
             buttonElement.classList.add('success-state');
             
             setTimeout(() => {
-                buttonElement.innerHTML = icons.copy;
-                buttonElement.setAttribute('data-tooltip', 'Copy Direct Link');
+                if (type === 'link') {
+                    buttonElement.innerHTML = icons.linkCopy;
+                    buttonElement.setAttribute('data-tooltip', 'Copy Direct Link');
+                } else {
+                    buttonElement.innerHTML = icons.copy;
+                    buttonElement.setAttribute('data-tooltip', 'Copy Release Text');
+                }
                 buttonElement.classList.remove('success-state');
             }, 2000);
         } catch (err) {
-            console.error('Failed to copy link: ', err);
+            console.error('Failed to copy text: ', err);
         }
     }
 
@@ -443,6 +461,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function registerEvents() {
         // Theme toggle
         elements.themeToggle.addEventListener('click', toggleTheme);
+
+        // Export CSV button
+        if (elements.exportCsvBtn) {
+            elements.exportCsvBtn.addEventListener('click', exportFilteredCSV);
+        }
 
         // Refresh buttons
         elements.refreshBtn.addEventListener('click', () => fetchReleases(true));
@@ -503,6 +526,71 @@ document.addEventListener('DOMContentLoaded', () => {
         
         state.activeFilter = 'all';
         renderFeed();
+    }
+
+    /* ==========================================================================
+       Utility & Export Helpers
+       ========================================================================== */
+    function htmlToPlainText(html) {
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        return temp.textContent || temp.innerText || "";
+    }
+
+    function getCardTextContent(entry) {
+        let text = `BigQuery Release Notes - ${entry.title}\n`;
+        text += '='.repeat(entry.title.length) + '\n\n';
+        
+        entry.updates.forEach(upd => {
+            const cleanContent = htmlToPlainText(upd.html);
+            text += `[${upd.originalCategoryName.toUpperCase()}]\n`;
+            text += `${cleanContent}\n\n`;
+        });
+        
+        text += `Source Documentation: ${entry.link}\n`;
+        return text;
+    }
+
+    function exportFilteredCSV() {
+        const filteredData = getFilteredData();
+        if (filteredData.length === 0) {
+            alert('No data to export.');
+            return;
+        }
+
+        const csvRows = [];
+        // Header Row
+        csvRows.push(['Date', 'Category', 'Description', 'Link'].map(val => `"${val.replace(/"/g, '""')}"`).join(','));
+
+        // Data Rows
+        filteredData.forEach(entry => {
+            entry.updates.forEach(upd => {
+                const cleanDesc = htmlToPlainText(upd.html)
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                
+                const row = [
+                    entry.title,
+                    upd.originalCategoryName,
+                    cleanDesc,
+                    entry.link
+                ];
+
+                csvRows.push(row.map(val => `"${val.replace(/"/g, '""')}"`).join(','));
+            });
+        });
+
+        // Generate download
+        const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        
+        const timestamp = new Date().toISOString().slice(0, 10);
+        link.download = `bigquery_release_notes_${timestamp}.csv`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     // Run app!
